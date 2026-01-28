@@ -1,0 +1,12 @@
+{
+  "description": "Wallet security policy - enforced by agent",
+  "version": 1,
+  "policies": {
+    "allowKeyExport": false,
+    "allowSeedExport": false,
+    "allowKeyImport": true,
+    "requireConfirmationForTx": true,
+    "maxTxValueUSD": 1000
+  },
+  "notes": "Private key export disabled by default. Access machine directly for key recovery."
+}

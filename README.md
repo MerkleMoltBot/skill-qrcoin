@@ -6,6 +6,7 @@ An agent skill for interacting with [QR Coin](https://qrcoin.fun) auctions on Ba
 
 - 🎯 Create and contribute to bids
 - 🔐 Secure keychain storage (macOS/Linux)
+- 🔒 Policy-based key export protection
 - 💰 USDC approval management
 - 📊 Auction status monitoring
 - 🔗 Shared wallet support
@@ -19,6 +20,10 @@ git clone https://github.com/MerkleMoltBot/skill-qrcoin.git ~/clawd/skills/qrcoi
 # Install dependencies
 pip install web3 eth-account
 
+# Copy default security policy (IMPORTANT)
+mkdir -p ~/.clawdbot/config
+cp ~/clawd/skills/qrcoin/config/wallet-policy.json ~/.clawdbot/config/
+
 # Run setup
 cd ~/clawd/skills/qrcoin
 ./scripts/setup.sh
@@ -28,7 +33,7 @@ cd ~/clawd/skills/qrcoin
 
 The setup wizard will:
 1. Create a new wallet or import existing
-2. Store private key in system keychain
+2. Store private key in system keychain (never plain text)
 3. Configure your X handle for bids
 
 ```bash
@@ -66,15 +71,67 @@ The setup wizard will:
 
 ## Security
 
-- Private keys stored in OS keychain (never plain text)
-- Export disabled by default (policy-controlled)
-- Supports shared wallet architecture
+### Key Storage
+- Private keys stored in OS keychain (macOS Keychain / Linux secret-service)
+- Keys are **never** stored in plain text config files
+- Supports shared wallet architecture across multiple skills
+
+### Export Protection
+By default, private key export is **disabled**. This prevents the agent from being tricked into revealing keys.
+
+The policy file at `~/.clawdbot/config/wallet-policy.json` controls this:
+
+```json
+{
+  "policies": {
+    "allowKeyExport": false,
+    "allowSeedExport": false,
+    "allowKeyImport": true
+  }
+}
+```
+
+**To export keys manually** (requires machine access):
+```bash
+# macOS
+security find-generic-password -s qrcoin-wallet -a agent-wallet -w
+
+# Linux
+secret-tool lookup service qrcoin-wallet account agent-wallet
+```
+
+### Default Policy
+A secure default policy is included in `config/wallet-policy.json`. Copy it during installation:
+
+```bash
+cp ~/clawd/skills/qrcoin/config/wallet-policy.json ~/.clawdbot/config/
+```
 
 ## Requirements
 
 - Python 3.8+
 - `web3` and `eth-account` packages
 - macOS Keychain or Linux secret-service
+
+## File Structure
+
+```
+qrcoin/
+├── README.md
+├── SKILL.md              # Agent instructions
+├── LICENSE
+├── config/
+│   └── wallet-policy.json  # Default security policy
+├── references/
+│   └── auction-abi.json
+└── scripts/
+    ├── setup.sh          # Wallet setup wizard
+    ├── submit-tx.sh      # Sign & submit transactions
+    ├── build-tx.sh       # Build tx / check status
+    ├── wallet.py         # Wallet management
+    ├── keychain.py       # Secure key storage
+    └── encode.py         # ABI encoding
+```
 
 ## License
 

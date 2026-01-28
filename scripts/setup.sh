@@ -18,6 +18,19 @@ echo "  QR Coin Auction Skill - Setup"
 echo "═══════════════════════════════════════════════════════"
 echo ""
 
+# Install default security policy if not present
+POLICY_DIR="$HOME/.clawdbot/config"
+POLICY_FILE="$POLICY_DIR/wallet-policy.json"
+DEFAULT_POLICY="$SKILL_DIR/config/wallet-policy.json"
+
+if [ ! -f "$POLICY_FILE" ] && [ -f "$DEFAULT_POLICY" ]; then
+    mkdir -p "$POLICY_DIR"
+    cp "$DEFAULT_POLICY" "$POLICY_FILE"
+    chmod 600 "$POLICY_FILE"
+    echo "✓ Installed default security policy (key export disabled)"
+    echo ""
+fi
+
 # Check for existing shared wallet
 if [ -f "$WALLET_CONFIG" ]; then
     WALLET_ADDR=$(jq -r '.address // empty' "$WALLET_CONFIG" 2>/dev/null || echo "")
