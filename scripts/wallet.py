@@ -26,8 +26,32 @@ except ImportError:
 # Enable mnemonic features
 Account.enable_unaudited_hdwallet_features()
 
-CONFIG_DIR = Path.home() / ".clawdbot" / "skills" / "qrcoin"
+CONFIG_DIR = Path.home() / ".clawdbot" / "skills" / "wallet"
 CONFIG_FILE = CONFIG_DIR / "config.json"
+POLICY_FILE = Path.home() / ".clawdbot" / "config" / "wallet-policy.json"
+
+def load_policy():
+    """Load wallet security policy."""
+    if POLICY_FILE.exists():
+        with open(POLICY_FILE) as f:
+            return json.load(f)
+    return {"policies": {}}
+
+def check_policy(action: str) -> bool:
+    """Check if an action is allowed by policy."""
+    policy = load_policy()
+    policies = policy.get("policies", {})
+    
+    action_map = {
+        "export": "allowKeyExport",
+        "seed_export": "allowSeedExport",
+        "import": "allowKeyImport",
+    }
+    
+    policy_key = action_map.get(action)
+    if policy_key:
+        return policies.get(policy_key, True)  # Default allow if not specified
+    return True
 
 # Contract addresses
 USDC = "0x833589fCD6eDb6E08f4c7c32D4f71b54bdA02913"
@@ -40,14 +64,14 @@ def load_config():
     return {}
 
 def get_private_key():
-    """Get private key from keychain or config."""
+    """Get private key from keychain or config (internal use for signing)."""
     import subprocess
     script_dir = Path(__file__).parent
     
-    # Try keychain first
+    # Try keychain first (with --internal flag to bypass policy for signing)
     try:
         result = subprocess.run(
-            ['python3', str(script_dir / 'keychain.py'), 'retrieve'],
+            ['python3', str(script_dir / 'keychain.py'), 'retrieve', '--internal'],
             capture_output=True, text=True
         )
         if result.returncode == 0 and result.stdout.strip():
@@ -96,6 +120,21 @@ def create_wallet():
 
 def export_key():
     """Export private key from keychain."""
+    # Check security policy
+    if not check_policy("export"):
+        print("═" * 60)
+        print("  🔒 EXPORT DISABLED")
+        print("═" * 60)
+        print()
+        print("Private key export is disabled by security policy.")
+        print()
+        print("To export manually, access the machine and run:")
+        print("  security find-generic-password -s qrcoin-wallet -a agent-wallet -w")
+        print()
+        print("Policy location: ~/.clawdbot/config/wallet-policy.json")
+        print()
+        return None
+    
     pk = get_private_key()
     if not pk:
         print("No wallet configured. Run setup.sh first.")
