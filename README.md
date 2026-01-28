@@ -14,7 +14,7 @@ An agent skill for interacting with [QR Coin](https://qrcoin.fun) auctions on Ba
 
 ```bash
 # Clone to your skills directory
-git clone https://github.com/user/skill-qrcoin.git ~/clawd/skills/qrcoin
+git clone https://github.com/MerkleMoltBot/skill-qrcoin.git ~/clawd/skills/qrcoin
 
 # Install dependencies
 pip install web3 eth-account
