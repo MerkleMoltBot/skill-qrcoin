@@ -62,6 +62,14 @@ The setup wizard will:
 ./scripts/submit-tx.sh contribute "https://existing-bid-url.com"
 ```
 
+### Query Bids
+```bash
+./scripts/query-bids.py              # Full output with all bids
+./scripts/query-bids.py --summary    # Auction info + top 10 + DRB status
+./scripts/query-bids.py --json       # JSON output for automation
+./scripts/query-bids.py --url URL    # Get specific bid by URL
+```
+
 ## Contracts (Base Mainnet)
 
 | Contract | Address |
@@ -128,6 +136,7 @@ qrcoin/
     ├── setup.sh          # Wallet setup wizard
     ├── submit-tx.sh      # Sign & submit transactions
     ├── build-tx.sh       # Build tx / check status
+    ├── query-bids.py     # Query bids from contract
     ├── wallet.py         # Wallet management
     ├── keychain.py       # Secure key storage
     └── encode.py         # ABI encoding
