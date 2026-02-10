@@ -69,8 +69,11 @@ Use `submit-tx.sh` to sign and submit transactions directly:
 Before bidding, approve USDC spending:
 
 ```bash
-./scripts/submit-tx.sh approve 50  # Approve 50 USDC
+./scripts/submit-tx.sh approve      # Approve 30 USDC (default)
+./scripts/submit-tx.sh approve 50   # Approve 50 USDC
 ```
+
+> ⚠️ **Important:** The `contributeToBid` function has no amount parameter — it pulls the **entire approved amount** from your wallet. Set your approval to exactly what you want to bid.
 
 ### Create New Bid
 
@@ -87,6 +90,16 @@ Before bidding, approve USDC spending:
 
 Name defaults to your configured X handle.
 
+> ⚠️ **Warning:** This will transfer your **entire approved USDC amount** to the bid. The contract has no partial contribution — approve only what you want to bid.
+
+### Non-Interactive Mode
+
+Use `--yes` or `-y` to skip confirmation prompts (for automation/cron):
+
+```bash
+./scripts/submit-tx.sh contribute "https://grokipedia.com/page/debtreliefbot" --yes
+```
+
 ---
 
 ## Read-Only Operations
@@ -100,6 +113,54 @@ Use `build-tx.sh` for status and building transaction data:
 # Build transaction without submitting (for inspection)
 ./scripts/build-tx.sh contribute "https://example.com"
 ```
+
+---
+
+## Query Bids (Direct Contract)
+
+Use `query-bids.py` to query auction data directly from the contract:
+
+```bash
+# Full output with all bids
+./scripts/query-bids.py
+
+# Summary only (auction info + top 10 + DRB status)
+./scripts/query-bids.py --summary
+
+# JSON output for programmatic use
+./scripts/query-bids.py --json
+
+# Get specific bid by URL
+./scripts/query-bids.py --url "https://grokipedia.com/page/debtreliefbot"
+```
+
+### JSON Output Structure
+
+```json
+{
+  "auction": {
+    "tokenId": 332,
+    "endTime": 1769965200,
+    "settled": false,
+    "status": "active",
+    "timeRemaining": "2h 30m",
+    "createReserveUsdc": 11.11,
+    "contributeReserveUsdc": 1.0
+  },
+  "bidCount": 32,
+  "bids": [
+    {
+      "rank": 1,
+      "totalUsdc": 357.0,
+      "url": "https://example.com",
+      "contributorCount": 5,
+      "contributions": [...]
+    }
+  ]
+}
+```
+
+**Use this for cron jobs** to get accurate auction state and bid rankings.
 
 ---
 
@@ -152,8 +213,8 @@ Check current prices with `./scripts/build-tx.sh status`
 # 3. Check balance
 ./scripts/wallet.py balance
 
-# 4. Approve USDC (once, or when increasing allowance)
-./scripts/submit-tx.sh approve 100
+# 4. Approve USDC (this is the amount that will be bid!)
+./scripts/submit-tx.sh approve 30  # Default: 30 USDC
 
 # 5. Check auction status
 ./scripts/build-tx.sh status
@@ -172,6 +233,7 @@ Check current prices with `./scripts/build-tx.sh status`
 | `wallet.py` | Wallet management (create/export/balance) |
 | `submit-tx.sh` | Sign and submit transactions |
 | `build-tx.sh` | Build calldata / check status |
+| `query-bids.py` | Query bids directly from contract (recommended for cron) |
 | `encode.py` | Low-level calldata encoding |
 
 ---
