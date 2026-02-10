@@ -77,11 +77,25 @@ acct = Account.from_key("$PRIVATE_KEY")
 # Build transaction
 nonce = w3.eth.get_transaction_count(acct.address)
 gas_price = w3.eth.gas_price
+to_addr = Web3.to_checksum_address("$to")
+
+# Estimate gas with 30% buffer to avoid out-of-gas
+try:
+    estimated = w3.eth.estimate_gas({
+        'from': acct.address,
+        'to': to_addr,
+        'data': "$data",
+    })
+    gas_limit = int(estimated * 1.3)  # 30% buffer
+    print(f"Estimated gas: {estimated}, using: {gas_limit}")
+except Exception as e:
+    gas_limit = 500000  # Fallback to safe default
+    print(f"Gas estimation failed ({e}), using default: {gas_limit}")
 
 tx = {
-    'to': Web3.to_checksum_address("$to"),
+    'to': to_addr,
     'data': "$data",
-    'gas': 300000,
+    'gas': gas_limit,
     'gasPrice': gas_price,
     'nonce': nonce,
     'chainId': 8453  # Base
@@ -92,17 +106,27 @@ signed = acct.sign_transaction(tx)
 tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
 
 print(f"Transaction sent!")
-print(f"Hash: {tx_hash.hex()}")
-print(f"View: https://basescan.org/tx/{tx_hash.hex()}")
+print(f"Hash: 0x{tx_hash.hex()}")
+print(f"View: https://basescan.org/tx/0x{tx_hash.hex()}")
 PYEOF
 }
 
-ACTION="${1:-help}"
-shift || true
+# Check for --yes flag and filter args
+YES_FLAG=false
+ARGS=()
+for arg in "$@"; do
+    if [ "$arg" = "--yes" ] || [ "$arg" = "-y" ]; then
+        YES_FLAG=true
+    else
+        ARGS+=("$arg")
+    fi
+done
+
+ACTION="${ARGS[0]:-help}"
 
 case "$ACTION" in
     approve)
-        AMOUNT_USDC="${1:-10}"
+        AMOUNT_USDC="${ARGS[1]:-30}"
         AMOUNT_WEI=$(usdc_to_wei "$AMOUNT_USDC")
         
         echo "═══════════════════════════════════════════════════════"
@@ -116,17 +140,21 @@ case "$ACTION" in
         # Encode approve(address,uint256)
         CALLDATA=$(python3 "$SCRIPT_DIR/encode.py" approve "$AUCTION" "$AMOUNT_WEI")
         
-        read -p "Submit transaction? (y/N): " CONFIRM
-        if [ "$CONFIRM" = "y" ] || [ "$CONFIRM" = "Y" ]; then
+        if [ "$YES_FLAG" = true ]; then
             send_tx "$USDC" "$CALLDATA" "Approve USDC"
         else
-            echo "Cancelled."
+            read -p "Submit transaction? (y/N): " CONFIRM
+            if [ "$CONFIRM" = "y" ] || [ "$CONFIRM" = "Y" ]; then
+                send_tx "$USDC" "$CALLDATA" "Approve USDC"
+            else
+                echo "Cancelled."
+            fi
         fi
         ;;
         
     createBid)
-        URL="${1:-}"
-        NAME="${2:-$X_HANDLE}"
+        URL="${ARGS[1]:-}"
+        NAME="${ARGS[2]:-$X_HANDLE}"
         
         if [ -z "$URL" ]; then
             echo "Usage: submit-tx.sh createBid <url> [name]"
@@ -148,17 +176,21 @@ case "$ACTION" in
         # Encode createBid(uint256,string,string)
         CALLDATA=$(python3 "$SCRIPT_DIR/encode.py" createBid "$TOKEN_ID" "$URL" "$NAME")
         
-        read -p "Submit transaction? (y/N): " CONFIRM
-        if [ "$CONFIRM" = "y" ] || [ "$CONFIRM" = "Y" ]; then
+        if [ "$YES_FLAG" = true ]; then
             send_tx "$AUCTION" "$CALLDATA" "Create bid"
         else
-            echo "Cancelled."
+            read -p "Submit transaction? (y/N): " CONFIRM
+            if [ "$CONFIRM" = "y" ] || [ "$CONFIRM" = "Y" ]; then
+                send_tx "$AUCTION" "$CALLDATA" "Create bid"
+            else
+                echo "Cancelled."
+            fi
         fi
         ;;
         
     contributeToBid|contribute)
-        URL="${1:-}"
-        NAME="${2:-$X_HANDLE}"
+        URL="${ARGS[1]:-}"
+        NAME="${ARGS[2]:-$X_HANDLE}"
         
         if [ -z "$URL" ]; then
             echo "Usage: submit-tx.sh contributeToBid <url> [name]"
@@ -180,11 +212,15 @@ case "$ACTION" in
         # Encode contributeToBid(uint256,string,string)
         CALLDATA=$(python3 "$SCRIPT_DIR/encode.py" contributeToBid "$TOKEN_ID" "$URL" "$NAME")
         
-        read -p "Submit transaction? (y/N): " CONFIRM
-        if [ "$CONFIRM" = "y" ] || [ "$CONFIRM" = "Y" ]; then
+        if [ "$YES_FLAG" = true ]; then
             send_tx "$AUCTION" "$CALLDATA" "Contribute to bid"
         else
-            echo "Cancelled."
+            read -p "Submit transaction? (y/N): " CONFIRM
+            if [ "$CONFIRM" = "y" ] || [ "$CONFIRM" = "Y" ]; then
+                send_tx "$AUCTION" "$CALLDATA" "Contribute to bid"
+            else
+                echo "Cancelled."
+            fi
         fi
         ;;
         
@@ -198,9 +234,12 @@ case "$ACTION" in
         echo "  createBid <url> [name]          Create new bid"
         echo "  contributeToBid <url> [name]    Contribute to existing bid"
         echo ""
+        echo "Options:"
+        echo "  --yes, -y                       Skip confirmation prompt"
+        echo ""
         echo "Examples:"
         echo "  submit-tx.sh approve 50"
         echo "  submit-tx.sh createBid https://example.com"
-        echo "  submit-tx.sh contribute https://grokipedia.com/page/debtreliefbot"
+        echo "  submit-tx.sh contribute https://grokipedia.com/page/debtreliefbot --yes"
         ;;
 esac
